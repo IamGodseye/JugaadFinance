@@ -1,0 +1,77 @@
+name: CI/CD with Environment Approval
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run a dummy build step
+      run: |
+        echo "Running build process..."
+        echo "Build complete!" > build_artifact.txt
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: build-artifact
+        path: build_artifact.txt
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download build artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: build-artifact
+    - name: Run tests
+      run: |
+        echo "Running tests..."
+        cat build_artifact.txt
+        echo "Tests passed!"
+
+  stage:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+    - name: Download build artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: build-artifact
+    - name: Deploy to staging
+      run: |
+        echo "Deploying to staging environment..."
+        cat build_artifact.txt
+        echo "Staged at $(date)"
+
+  production:
+    needs: stage
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+    - name: Download build artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: build-artifact
+    - name: Deploy to production
+      run: |
+        echo "Deploying to production environment..."
+        cat build_artifact.txt
+        echo "Deployed to production at $(date)"
+
+  notify:
+    needs: production
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Notification step
+      run: |
+        echo "Deployment process completed."
+        echo "Notifying team..."
